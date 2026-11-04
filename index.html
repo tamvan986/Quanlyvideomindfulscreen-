@@ -1055,15 +1055,36 @@ function applyTreeScore(anon, posCounts, negCounts, note, extra){
 }
 /* --- Tuần chấm & dữ liệu bằng chứng của một học sinh trong tuần --- */
 function treeWeekOptions(){
-  const set=new Set(DB.reports.map(r=>r.weekStart));
-  set.add(weekOf(todayStr()).start);
-  return [...set].sort().map(ws=>weekOf(ws));
+  const set = new Set();
+  
+  // Lấy các tuần đã có báo cáo
+  DB.reports.forEach(r => set.add(r.weekStart));
+  // Lấy các tuần học sinh đã có ghi nhật ký
+  DB.logs.forEach(l => set.add(weekOf(l.date).start));
+  
+  // Tự động sinh ra 25 tuần (từ 20 tuần trước đến 4 tuần sau hiện tại)
+  const currentWeekStart = weekOf(todayStr()).start;
+  for (let i = -20; i <= 4; i++) {
+    set.add(addDays(currentWeekStart, i * 7));
+  }
+  
+  // Trả về mảng đã sắp xếp
+  return [...set].sort().map(ws => weekOf(ws));
 }
+
 function fillTreeWeeks(){
   const sel=document.getElementById('treeWeek'); if(!sel) return;
   const prev=sel.value, opts=treeWeekOptions();
   sel.innerHTML=opts.map(w=>`<option value="${w.start}">Tuần ${fmtVN(w.start)} → ${fmtVN(w.end)}</option>`).join('');
-  if(prev && opts.some(w=>w.start===prev)) sel.value=prev;
+  
+  const curWeek = weekOf(todayStr()).start;
+  if(prev && opts.some(w=>w.start===prev)) {
+    sel.value=prev; // Giữ nguyên tuần nếu giáo viên đang tự chọn
+  } else if(opts.some(w=>w.start===curWeek)) {
+    sel.value=curWeek; // Mở lên tự động nhảy vào tuần hiện tại
+  } else if(opts.length) {
+    sel.value=opts[opts.length-1].start;
+  }
 }
 function treeSelWeek(){
   const sel=document.getElementById('treeWeek');
